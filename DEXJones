@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dex Jones – Guardião da Saúde</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: auto; background: #e0f7ff; padding: 20px; }
+
+    /* --- Boneco / container --- */
+    #enfermeiro { position: relative; display: flex; justify-content: center; margin-bottom: 20px; animation: andar 3s ease-in-out infinite alternate; }
+    @keyframes andar { 0% { transform: translateX(-10px);} 100% { transform: translateX(10px);} }
+    svg { width: 200px; height: 300px; animation: pulse 3s infinite; }
+    @keyframes pulse { 0%,100% { filter: drop-shadow(0 0 5px #44aaff);} 50% { filter: drop-shadow(0 0 15px #44aaff);} }
+
+    /* Boca SEMPRE visível e animando; intensifica quando .falando */
+    path#boca { animation: falaAnimada 0.4s infinite alternate; transform-origin: center; stroke: #900; stroke-width: 2; fill: none; }
+    .falando path#boca { animation-duration: 0.28s; }
+    @keyframes falaAnimada { 0%{transform: translateY(0) scaleY(1);} 100%{transform: translateY(1px) scaleY(1.18);} }
+    .triste path#boca { transform: translateY(2px) scaleY(0.85); }
+
+    /* Balão de fala */
+    #fala { font-size: 1.3rem; font-weight: bold; background: #cdefff; padding: 15px; border-radius: 10px; margin-bottom: 16px; min-height: 70px; user-select: none; text-align: center; }
+
+    /* Formulário */
+    .pergunta { margin: 16px 0; padding: 15px; background: #fff; border: 1px solid #ccc; border-radius: 8px; }
+    .pergunta legend { font-weight: 600; margin-bottom: 8px; }
+    label { display: block; margin: 6px 0; }
+    input[type="text"] { padding: 10px; width: 100%; }
+    .hint { font-size:.9rem; color:#333; opacity:.9; }
+
+    button { padding: 10px 16px; font-size: 1rem; margin-top: 10px; background: #3a9bdc; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #2873b5; }
+    button[disabled] { opacity: .5; cursor: not-allowed; }
+
+    #controles { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+
+    pre { white-space: pre-wrap; background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #ccc; }
+
+    /* Status */
+    #syncBar { margin-top:6px; font-size:.95rem; color:#0b5; }
+    #syncBar.error { color:#b00; }
+  </style>
+</head>
+<body>
+
+<!-- Boneco -->
+<div id="enfermeiro" aria-live="polite">
+  <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dex Jones">
+    <circle cx="100" cy="60" r="45" fill="#f1c27d" stroke="#333" stroke-width="2"/>
+    <g id="chapeu-cowboy">
+      <ellipse cx="100" cy="35" rx="70" ry="18" fill="#5c3a1a" filter="url(#sombra)" />
+      <rect x="60" y="10" width="80" height="35" rx="12" ry="12" fill="#4b341b" stroke="#2e1e0f" stroke-width="2"/>
+    </g>
+    <defs>
+      <filter id="sombra" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#008cff" flood-opacity="0.3"/>
+      </filter>
+    </defs>
+    <circle cx="80" cy="60" r="7" fill="#000"/>
+    <circle cx="120" cy="60" r="7" fill="#000"/>
+    <polygon points="95,65 105,65 100,75" fill="#dca36a" stroke="#333" stroke-width="1"/>
+    <!-- Boca sempre visível -->
+    <path id="boca" d="M92 88 Q100 94 108 88">
+      <animate attributeName="d" dur="1.8s" repeatCount="indefinite"
+        values="M92 88 Q100 94 108 88; M92 88 Q100 98 108 88; M92 88 Q100 94 108 88"/>
+    </path>
+
+    <!-- Corpo -->
+    <rect x="60" y="100" width="80" height="90" fill="#003366" stroke="#333" stroke-width="2" rx="10" />
+    <rect x="90" y="130" width="40" height="18" fill="orange" rx="3"/>
+    <text x="110" y="143" font-size="11" font-weight="bold" text-anchor="middle" fill="black" font-family="Arial">DEXCO</text>
+    <rect x="45" y="100" width="18" height="70" fill="#003366" stroke="#333" stroke-width="2" rx="10"/>
+    <rect x="137" y="100" width="18" height="70" fill="#003366" stroke="#333" stroke-width="2" rx="10"/>
+    <circle cx="54" cy="170" r="9" fill="#f1c27d" stroke="#333" stroke-width="2"/>
+    <circle cx="146" cy="170" r="9" fill="#f1c27d" stroke="#333" stroke-width="2"/>
+    <rect x="75" y="190" width="20" height="55" fill="#444" stroke="#333" stroke-width="2"/>
+    <rect x="105" y="190" width="20" height="55" fill="#444" stroke="#333" stroke-width="2"/>
+    <ellipse cx="85" cy="245" rx="13" ry="7" fill="#222" />
+    <ellipse cx="115" cy="245" rx="13" ry="7" fill="#222" />
+    <path d="M160 170 Q190 200 160 230 Q150 250 180 280 Q175 300 200 310" stroke="#000" stroke-width="4" fill="none" />
+  </svg>
+</div>
+
+<!-- Balão de fala -->
+<div id="fala" tabindex="0" role="status" aria-live="polite" aria-atomic="true">
+  Olá! Eu sou Dex Jones, o Guardião da Saúde. Vamos iniciar sua avaliação de qualidade de vida.
+</div>
+
+<!-- Formulário / Perguntas -->
+<div id="formulario" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Controles -->
+<div id="controles">
+  <button id="iniciar" type="button">Iniciar avaliação</button>
+  <button id="avancar" type="button" style="display:none">Próxima</button>
+  <button id="reiniciar" type="button" style="display:none; background:#bbb;">Reiniciar</button>
+  <button id="salvar" type="button" style="display:none" title="Gera o resultado e salva no Google Sheets">Salvar no Google Sheets</button>
+  <span id="syncBar" aria-live="polite"></span>
+</div>
+
+<h2 id="tituloResultado" style="display:none">Resultado</h2>
+<pre id="resultado" style="display:none"></pre>
+
+<script>
+/* =================== CONFIG ENDPOINT (Apps Script) =================== */
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsl0sgNtciFj2SPa9jxaz9TxWpO_te6ZeQjFVFYx3IA8TTZLOBBTTkwZWn_EzLcJO2YA/exec';
+const APPS_SCRIPT_SECRET = '5659704821835963@$'; // deve ser o MESMO do Apps Script
+
+/* =================== Perguntas (com múltipla seleção onde apropriado) =================== */
+const perguntas = [
+  { campo: "Unidade", texto: "Qual a sua Unidade de Trabalho?", opcoes: [] },
+
+  { campo: "Peso", texto: "Qual seu Peso?", opcoes: [] },
+  { campo: "Altura", texto: "Qual sua Altura?", opcoes: [] },
+
+  { campo: "fuma", texto: "Você fuma?", opcoes: ["Sim", "Não"] },
+  { campo: "qtd_cigarros", texto: "Quantos cigarros por dia?", opcoes: ["Menos de 10", "10 a 15", "Mais de 15"], condicao: { campo: "fuma", valor: "Sim" } },
+
+  { campo: "bebe", texto: "Você costuma ingerir bebidas alcoólicas?", opcoes: ["Sim", "Não"] },
+  { campo: "frequencia_alcool", texto: "Com que frequência?", opcoes: ["Socialmente", "Semanalmente", "Diariamente"], condicao: { campo: "bebe", valor: "Sim" } },
+
+  { campo: "atividade_fisica", texto: "Você pratica atividade física regularmente?", opcoes: ["Sim", "Não"] },
+  { campo: "frequencia_atividade", texto: "Com que frequência?", opcoes: ["Menos de 2x por semana", "3 ou mais vezes por semana"], condicao: { campo: "atividade_fisica", valor: "Sim" } },
+
+  { campo: "dieta", texto: "Sua dieta inclui frutas e vegetais diariamente?", opcoes: ["Sim", "Não"] },
+  { campo: "sal", texto: "Você consome muito sal nas refeições?", opcoes: ["Sim", "Não"] },
+  { campo: "ultraprocessados", texto: "Costuma consumir alimentos ultraprocessados?", opcoes: ["Sim", "Não"] },
+  { campo: "doces", texto: "Consome doces regularmente?", opcoes: ["Sim", "Não"] },
+
+  { campo: "hipertensao", texto: "Já foi diagnosticado com hipertensão?", opcoes: ["Sim", "Não"] },
+  { campo: "colesterol", texto: "Já teve colesterol alto?", opcoes: ["Sim", "Não"] },
+
+  { campo: "avc", texto: "Já sofreu infarto ou AVC?", opcoes: ["Sim", "Não"] },
+  { campo: "cirurgia_med", texto: "Se sim, precisou de cirurgia ou está em uso de medicação?", opcoes: [], condicao: { campo: "avc", valor: "Sim" } },
+
+  { campo: "pressao", texto: "Quando foi a última vez que mediu a pressão?", opcoes: ["Menos de 6 meses", "6 meses a 1 ano", "Mais de 1 ano"] },
+
+  { campo: "doenca_cronica", texto: "Você tem alguma doença crônica?", opcoes: ["Sim", "Não"] },
+  { campo: "quais_doencas", texto: "Se sim, quais?", opcoes: ["Diabetes","Asma/Bronquite","Hipertensão","Artrite","Lúpus","Problemas da Tireoide","Colesterol Alto"], condicao: { campo: "doenca_cronica", valor: "Sim" }, multi: true },
+
+  { campo: "medicacao_continua", texto: "Faz uso de medicação contínua?", opcoes: ["Sim", "Não"] },
+  { campo: "quais_medicacoes", texto: "Se sim, quais?", opcoes: [], condicao: { campo: "medicacao_continua", valor: "Sim" } },
+
+  { campo: "internacoes", texto: "Tem histórico de internações nos últimos 5 anos?", opcoes: ["Sim", "Não"] },
+  { campo: "cansaco", texto: "Sente cansaço frequente ou falta de ar sem esforço?", opcoes: ["Sim", "Não"] },
+
+  { campo: "historico_cancer", texto: "Há casos de câncer na sua família?", opcoes: ["Sim", "Não"] },
+  { campo: "tipos_cancer_familia", texto: "Se sim, quais tipos?", opcoes: ["Mama","Próstata","Pele","Colorretal","Pulmão","Colo de Útero","Outros"], condicao: { campo: "historico_cancer", valor: "Sim" }, multi: true },
+  { campo: "grau_parentesco_cancer", texto: "E qual o grau de parentesco?", opcoes: ["Pai/Mãe","Irmão/Irmã","Avô/Avó","Tio/Tia","Filho/Filha"], condicao: { campo: "historico_cancer", valor: "Sim" }, multi: true },
+
+  { campo: "exames_cancer", texto: "Você faz exames preventivos conforme sua idade e sexo?", opcoes: ["Sim", "Não"] },
+  { campo: "tipos_exames", texto: "Quais exames você realiza?", opcoes: ["Papanicolau","Mamografia","PSA","Ultrassom de Mamas","Colonoscopia"], condicao: { campo: "exames_cancer", valor: "Sim" }, multi: true },
+
+  { campo: "caroco", texto: "Já detectou algum caroço ou alteração no corpo?", opcoes: ["Sim", "Não"] }
+];
+
+const respostas = {}; let indice = 0; let questionarioFinalizado = false; let iniciado=false;
+
+/* =================== Fala helpers =================== */
+const enfermeiro = document.getElementById('enfermeiro');
+const bubble = document.getElementById('fala');
+
+function iniciarFalaUI(){ enfermeiro.classList.add('falando'); }
+function encerrarFalaUI(){ enfermeiro.classList.remove('falando'); }
+function selecionarTextoDoBalao(){ try{ const r=document.createRange(); r.selectNodeContents(bubble); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);}catch{} }
+
+function falar(texto, triste=false){
+  bubble.textContent = texto;
+  enfermeiro.classList.remove('triste'); if(triste) enfermeiro.classList.add('triste');
+  iniciarFalaUI(); selecionarTextoDoBalao(); bubble.focus();
+  if('speechSynthesis' in window){
+    speechSynthesis.cancel();
+    const msg=new SpeechSynthesisUtterance(texto);
+    msg.lang='pt-BR'; msg.rate=1.2; msg.onend=encerrarFalaUI; msg.onerror=encerrarFalaUI;
+    speechSynthesis.speak(msg);
+  } else { setTimeout(encerrarFalaUI, Math.max(1800, texto.length*40)); }
+}
+
+/* =================== Regras de múltipla seleção =================== */
+const isBinaryYesNo = (p) => p.opcoes && p.opcoes.length===2 &&
+  p.opcoes.map(o=>o.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'')).every(o=> (o==='sim' || o==='nao'));
+
+const isMulti = (p) => !!p.multi || (p.opcoes && p.opcoes.length>0 && !isBinaryYesNo(p));
+
+/* =================== Condição =================== */
+function condicaoAtendida(p){
+  if(!p.condicao) return true;
+  const val = respostas[p.condicao.campo];
+  if(Array.isArray(val)) return val.includes(p.condicao.valor);
+  return val === p.condicao.valor;
+}
+
+/* =================== Render da Pergunta =================== */
+function mostrarPergunta(){
+  const form = document.getElementById('formulario'); form.innerHTML='';
+  while(indice < perguntas.length){
+    const p = perguntas[indice];
+    if(condicaoAtendida(p)){
+      const fieldset=document.createElement('fieldset'); fieldset.className='pergunta';
+      const legend=document.createElement('legend'); legend.textContent=p.texto; fieldset.appendChild(legend);
+
+      if(p.opcoes.length>0){
+        const multiNow = isMulti(p);
+        const tipo = multiNow ? 'checkbox' : 'radio';
+        p.opcoes.forEach((op, i)=>{
+          const id = `${p.campo}_${i}`;
+          const l=document.createElement('label'); l.setAttribute('for', id);
+          const input=document.createElement('input'); input.type=tipo; input.id=id; input.name=p.campo; input.value=op;
+          l.prepend(input); l.append(' '+op); fieldset.appendChild(l);
+        });
+        if(multiNow){
+          const small=document.createElement('div'); small.className='hint';
+          small.textContent='(Você pode selecionar mais de uma opção)';
+          fieldset.appendChild(small);
+        }
+      } else {
+        const input=document.createElement('input'); input.type='text'; input.name=p.campo;
+        input.placeholder=(p.campo.toLowerCase()==='altura')?'Ex.: 1,75'
+                          :(p.campo.toLowerCase()==='peso'?'Ex.: 70'
+                          :(p.campo.toLowerCase()==='unidade'?'Ex.: ADM Central / Fábrica':'' ));
+        fieldset.appendChild(input);
+      }
+
+      form.appendChild(fieldset);
+      falar(p.texto);
+      document.getElementById('avancar').style.display='inline-block';
+      return;
+    }
+    indice++;
+  }
+  questionarioFinalizado = true;
+  falar('Prontinho! Revise suas respostas e clique em "Salvar no Google Sheets" para gerar a avaliação e registrar os dados.');
+  document.getElementById('avancar').style.display='none';
+  document.getElementById('reiniciar').style.display='inline-block';
+  document.getElementById('salvar').style.display='inline-block';
+}
+
+/* =================== Navegação =================== */
+function capturarValorAtual(p){
+  const checkboxes = document.querySelectorAll(`[name="${p.campo}"][type="checkbox"]`);
+  if(checkboxes.length){ return Array.from(checkboxes).filter(i=>i.checked).map(i=>i.value); }
+
+  const radios = document.querySelectorAll(`[name="${p.campo}"][type="radio"]`);
+  if(radios.length){ const marcado=Array.from(radios).find(i=>i.checked); return marcado ? marcado.value : ''; }
+
+  const el=document.querySelector(`[name="${p.campo}"]`);
+  return el ? String(el.value||'').trim() : '';
+}
+
+function avancar(){
+  const atual = perguntas[indice]; if(!atual) return;
+  const valor = capturarValorAtual(atual);
+
+  if(Array.isArray(valor)){ if(valor.length===0){ falar('Por favor, selecione ao menos uma opção.', true); return; } }
+  else if(!valor){ falar('Por favor, selecione ou preencha uma resposta.', true); return; }
+
+  let val = valor;
+  if(typeof val === 'string' && ['peso','altura','Peso','Altura'].includes(atual.campo)) val = val.replace(',', '.');
+  respostas[atual.campo] = val;
+  indice++;
+  mostrarPergunta();
+}
+
+addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && document.getElementById('avancar').style.display!=='none'){
+    const atual = perguntas[indice]; if(!atual) return;
+    const el = document.querySelector(`[name="${atual.campo}"]`);
+    if(el && el.tagName==='INPUT' && el.type==='text'){ e.preventDefault(); avancar(); }
+  }
+});
+
+/* Botões */
+const btnIniciar = document.getElementById('iniciar');
+const btnAvancar = document.getElementById('avancar');
+const btnReiniciar = document.getElementById('reiniciar');
+btnIniciar.addEventListener('click', ()=>{ if(iniciado) return; iniciado=true; indice=0; mostrarPergunta(); btnIniciar.style.display='none'; });
+btnAvancar.addEventListener('click', avancar);
+btnReiniciar.addEventListener('click', ()=>{
+  indice=0; questionarioFinalizado=false; Object.keys(respostas).forEach(k=>delete respostas[k]);
+  document.getElementById('resultado').textContent='';
+  document.getElementById('resultado').style.display='none';
+  document.getElementById('tituloResultado').style.display='none';
+  document.getElementById('formulario').innerHTML='';
+  document.getElementById('avancar').style.display='none';
+  document.getElementById('salvar').style.display='none';
+  document.getElementById('reiniciar').style.display='none';
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  encerrarFalaUI(); enfermeiro.classList.remove('triste');
+  falar('Vamos começar novamente sua avaliação de qualidade de vida.');
+  btnIniciar.style.display='inline-block'; iniciado=false;
+});
+
+/* Boas-vindas */
+addEventListener('DOMContentLoaded', ()=>{ falar('Olá! Eu sou Dex Jones, o Guardião da Saúde. Vamos iniciar sua avaliação de qualidade de vida. Clique em Iniciar.'); });
+
+/* =================== Cálculos =================== */
+const calcularIMC = (peso, altura) => { const p=parseFloat(peso||respostas.Peso), a=parseFloat(altura||respostas.Altura); if(!p||!a||a<=0) return null; return p/(a*a); };
+const classificarRisco = (p) => (p>=5? 'Alto risco' : p>=3? 'Risco moderado' : 'Baixo risco');
+
+const calcularRiscoCardiaco = (r) => {
+  let x=0; const imc=calcularIMC(r.Peso,r.Altura);
+  if(imc&&imc>=30)x++;
+  if(r.fuma==='Sim')x++;
+  if(r.qtd_cigarros==='Mais de 15')x++;
+  if(r.bebe==='Sim' && ['Semanalmente','Diariamente'].includes(r.frequencia_alcool))x++;
+  if(r.atividade_fisica==='Não')x++;
+  if(r.dieta==='Não')x++;
+  if(r.sal==='Sim')x++;
+  if(r.ultraprocessados==='Sim')x++;
+  if(r.doces==='Sim')x++;
+  if(r.hipertensao==='Sim')x++;
+  if(r.colesterol==='Sim')x++;
+  if(r.avc==='Sim')x+=2;
+  if(r.cansaco==='Sim')x++;
+  return classificarRisco(x);
+};
+
+const calcularRiscoCancer = (r) => {
+  let x=0;
+  if(r.fuma==='Sim')x++;
+  if(r.bebe==='Sim' && r.frequencia_alcool==='Diariamente')x++;
+  if(r.ultraprocessados==='Sim')x++;
+  if(r.doces==='Sim')x++;
+  if(r.historico_cancer==='Sim')x+=2;
+  if(r.caroco==='Sim')x+=2;
+  if(r.exames_cancer==='Não')x++;
+  return classificarRisco(x);
+};
+
+const calcularRiscoCronico = (r) => {
+  let x=0;
+  if(r.doenca_cronica==='Sim')x+=2;
+  if(r.medicacao_continua==='Sim')x++;
+  if(r.atividade_fisica==='Não')x++;
+  if(r.dieta==='Não')x++;
+  if(r.cansaco==='Sim')x++;
+  return classificarRisco(x);
+};
+
+const avaliarTodosOsRiscos = (r) => {
+  const risco_cardiaco=calcularRiscoCardiaco(r), risco_cancer=calcularRiscoCancer(r), risco_cronico=calcularRiscoCronico(r);
+  const orientacoes = {
+    risco_cardiaco: `
+🔹 RISCO CARDIOVASCULAR (${risco_cardiaco})
+Indicadores: Tabagismo, sedentarismo, consumo excessivo de sal, álcool ou gordura, hipertensão, colesterol alto.
+Orientações:
+• Caminhar 30 min/dia, 5x por semana.
+• Reduzir sal, frituras e ultraprocessados.
+• Medir pressão regularmente.
+• Participar das ações de saúde e exames periódicos.
+• Procurar apoio para parar de fumar e moderar álcool.`,
+    risco_cronico: `
+🔹 RISCO DE DOENÇAS CRÔNICAS (${risco_cronico})
+Indicadores: Uso contínuo de medicamentos, doenças como diabetes, asma, lúpus, artrite.
+Orientações:
+• Mantenha acompanhamento médico e exames de rotina.
+• Alimentação rica em fibras, vegetais e pouca gordura.
+• Hidratação diária e rotina de sono.
+• Evite automedicação.
+• Participe de palestras educativas sobre sua condição.`,
+    risco_cancer: `
+🔹 RISCO DE CÂNCER (${risco_cancer})
+Indicadores: Histórico familiar, exposição química, falta de exames preventivos.
+Orientações:
+• Realize exames adequados (mamografia, PSA, colonoscopia, Papanicolau).
+• Use protetor solar diariamente.
+• Utilize sempre EPI em ambientes de risco.
+• Procure avaliação médica se notar alterações na pele ou nódulos.
+• Participe de campanhas de prevenção (Outubro Rosa, Novembro Azul).`
+  };
+  return { riscos:{risco_cardiaco,risco_cronico,risco_cancer}, plano_acao: `${orientacoes.risco_cardiaco}
+
+${orientacoes.risco_cronico}
+
+${orientacoes.risco_cancer}` };
+};
+
+/* =================== Montagem da linha / salvar =================== */
+function normalizar(valor){ return Array.isArray(valor) ? valor.join(', ') : (valor==null? '' : String(valor)); }
+
+function montarLinhaParaPlanilha(){
+  const r=respostas; const { riscos }=avaliarTodosOsRiscos(r); const imc=calcularIMC(r.Peso,r.Altura); const agora=new Date().toLocaleString();
+  return [ agora, r.Unidade||'', r.Peso||'', r.Altura||'', imc?imc.toFixed(2):'',
+    r.fuma||'', r.qtd_cigarros||'', r.bebe||'', r.frequencia_alcool||'',
+    r.atividade_fisica||'', r.frequencia_atividade||'', r.dieta||'', r.sal||'',
+    r.ultraprocessados||'', r.doces||'', r.hipertensao||'', r.colesterol||'',
+    r.avc||'', r.cirurgia_med||'', r.pressao||'',
+    r.doenca_cronica||'', normalizar(r.quais_doencas),
+    r.medicacao_continua||'', normalizar(r.quais_medicacoes),
+    r.internacoes||'', r.cansaco||'',
+    r.historico_cancer||'', normalizar(r.tipos_cancer_familia),
+    normalizar(r.grau_parentesco_cancer),
+    r.exames_cancer||'', normalizar(r.tipos_exames),
+    riscos.risco_cardiaco, riscos.risco_cronico, riscos.risco_cancer
+  ];
+}
+
+function camposPendentes(){
+  for(let i=0;i<perguntas.length;i++){
+    const p=perguntas[i]; if(!condicaoAtendida(p)) continue;
+    const val = respostas[p.campo];
+    if(isMulti(p)){ if(!Array.isArray(val) || val.length===0) return i; }
+    else if(!val || String(val).trim()==='') return i;
+  }
+  return -1;
+}
+
+/* =================== Salvar anonimamente via Apps Script =================== */
+async function salvarNoGoogle(){
+  const syncBar=document.getElementById('syncBar'); syncBar.classList.remove('error');
+  const idxPend=camposPendentes();
+  if(idxPend!==-1){
+    indice=idxPend; questionarioFinalizado=false; falar('Você ainda não concluiu o questionário. Vamos continuar.'); mostrarPergunta(); return;
+  }
+  syncBar.textContent='Gerando avaliação...';
+  const plano=avaliarEFormatarResultado();
+  document.getElementById('resultado').textContent=plano;
+  document.getElementById('resultado').style.display='block';
+  document.getElementById('tituloResultado').style.display='block';
+  falar('Resultado gerado. Vou registrar na planilha.');
+
+  try{
+    syncBar.textContent='Enviando para a planilha...';
+    const row = montarLinhaParaPlanilha();
+
+    // 1ª tentativa: request simples (sem headers) para evitar preflight CORS
+    let ok = false, triedNoCors = false;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ apiKey: APPS_SCRIPT_SECRET, row })
+      });
+      ok = res.ok;
+      try { const json = await res.json(); ok = ok && json.ok; } catch(_) {}
+    } catch(e) {
+      // fallback abaixo
+    }
+
+    // Fallback: no-cors (não dá para ler a resposta, assume sucesso otimista)
+    if (!ok) {
+      triedNoCors = true;
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ apiKey: APPS_SCRIPT_SECRET, row })
+      });
+      ok = true; // otimista: Apps Script normalmente recebe e grava
+    }
+
+    if (ok) {
+      syncBar.textContent = triedNoCors
+        ? '✅ Dados enviados (modo no-cors). Verifique a planilha.'
+        : '✅ Dados salvos na planilha.';
+    } else {
+      throw new Error('Falha no endpoint');
+    }
+  } catch (e) {
+    console.error(e);
+    syncBar.classList.add('error');
+    syncBar.textContent='Falha ao salvar. Verifique a implantação e a chave.';
+  }
+}
+
+document.getElementById('salvar').addEventListener('click', salvarNoGoogle);
+
+/* Resultado formatado */
+function avaliarEFormatarResultado(){
+  const r=respostas; const { riscos, plano_acao }=avaliarTodosOsRiscos(r); const imc=calcularIMC(r.Peso, r.Altura);
+  const cab=`Unidade: ${r.Unidade||'—'}
+IMC: ${imc?imc.toFixed(2):'—'}
+Risco cardiovascular: ${riscos.risco_cardiaco}
+Risco doenças crônicas: ${riscos.risco_cronico}
+Risco de câncer: ${riscos.risco_cancer}`;
+  return `${cab}
+
+${plano_acao}`;
+}
+</script>
+
+<!-- ====== VLibras (acessibilidade) ====== -->
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper><div class="vw-plugin-top-wrapper"></div></div>
+</div>
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+(function initVLibras(){
+  function start(){ try { new window.VLibras.Widget('https://vlibras.gov.br/app'); } catch(e){ setTimeout(start, 500); } }
+  if (window.VLibras && window.VLibras.Widget) start();
+  else {
+    const scripts=document.getElementsByTagName('script'); const last=scripts[scripts.length-1];
+    if (last && !last.dataset.vlReady){ last.addEventListener('load', start, { once:true }); last.dataset.vlReady='1'; }
+    else { setTimeout(start, 700); }
+  }
+})();
+</script>
+<!-- =================== /VLibras =================== -->
+
+</body>
+</html>
